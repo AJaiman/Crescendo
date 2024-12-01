@@ -3,7 +3,7 @@ from database.models import User
 from main import router
 from config import users_collection
 from constants import *
-
+from fastapi import HTTPException
 # User Routes
 @router.post("/user")
 def create_user(user: User):
@@ -105,7 +105,6 @@ def get_song_info(song_id: str):
 except Exception as e:
     return {"error": str(e)}, 400 #changed this from the song liked successfuly to the error message :)
 
-@router.post("/song/recommendations/{email}")
 def update_song_recommendations(email: str, access_token: str):
     try:
         spotify = SpotifyAPI(access_token)
@@ -136,12 +135,35 @@ def update_song_recommendations(email: str, access_token: str):
     except Exception as e:
         return {"error": str(e)}, 400
 
-
 @router.post("/song/initial/{email}") # Use genres to generate recommendations and update user's recommendations list
-def update_initial_recommendations(email: str):
-    return {"message": "Initial recommendations updated successfully"}
+async def update_initial_recommendations(email: str, access_token: str):
+    try:
+        user_data = users_collection.find_one({"email": email})
+        if not user_data:
+            raise HTTPException(status_code=404, detail="User not found")     
+        user = User(**user_data)
+        if not user.genres:
+            raise HTTPException(status_code=400, detail="No genres found for user")
+        spotify = SpotifyAPI(access_token)  
+        recommendations = spotify.get_recommended_track_ids(
+            genres=user.genres,
+            artist_popularity_threshold=MAX_POPULARITY
+        )
+        users_collection.update_one(
+            {"email": email},
+            {"$set": {"recommended_songs": recommendations}}
+        )   
+        return {
+            "message": "Initial recommendations updated successfully",
+            "recommendations": recommendations,
+            "count": len(recommendations)
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Spotify Account Interactions
 @router.post("/spotify/liked/{email}")
 def update_liked_songs(email: str, song_id: str):
     return {"message": "Liked songs updated successfully"}
+ 
