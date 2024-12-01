@@ -1,21 +1,62 @@
 from backend.database.models import User
-from backend.spotify import SpotifyAPI
-from fastapi import HTTPException
-from config import users_collection
-from constants import REC_LIMIT, MAX_POPULARITY
 from main import router
+from config import users_collection
 
 # User Routes
 @router.post("/user")
 def create_user(user: User):
+    # Check if user already exists
+    existing_user = users_collection.find_one({"email": user.email})
+    if existing_user:
+        return {"message": "User with this email already exists"}
+        
+    users_collection.insert_one({
+        "email": user.email,
+        "first_name": user.first_name,
+        "last_name": user.last_name,
+        "liked_songs": user.liked_songs,
+        "genres": user.genres,
+        "recommendations": user.recommendations
+    })
     return {"message": "User created successfully"}
 
 @router.get("/user")
-def get_user(user_id: str):
-    return {"message": "User retrieved successfully"}
+def get_all_users():
+    users = users_collection.find({})
+    user_list = []
+    for user in users:
+        user_list.append({
+            "email": user["email"],
+            "first_name": user["first_name"],
+            "last_name": user["last_name"], 
+            "liked_songs": user["liked_songs"],
+            "genres": user["genres"],
+            "recommendations": user["recommendations"]
+        })
+    return user_list
 
-@router.delete("/user")
-def delete_user(user_id: str):
+
+@router.get("/user/{email}")
+def get_user(email: str):
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return {"message": "User not found"}
+    
+    return {
+        "email": user["email"],
+        "first_name": user["first_name"], 
+        "last_name": user["last_name"],
+        "liked_songs": user["liked_songs"],
+        "genres": user["genres"],
+        "recommendations": user["recommendations"]
+    }
+
+@router.delete("/user/{email}")
+def delete_user(email: str):
+    # Check if user exists
+    result = users_collection.delete_one({"email": email})
+    if result.deleted_count == 0:
+        return {"message": "User not found"}
     return {"message": "User deleted successfully"}
 
 # User Song Interactions
@@ -29,35 +70,13 @@ def like_song(song_id: str):
 def get_song_info(song_id: str):
     return {"message": "Song retrieved successfully"}
 
-@router.post("/song/recommendations/{email}") # Use liked songs to generate recommendations and update user's recommendations list
+@router.post("/song/recommendations/{email}")
 def update_song_recommendations(email: str):
     return {"message": "Song recommendations retrieved successfully"}
 
-@router.post("/song/initial/{email}") # Use genres to generate recommendations and update user's recommendations list
-async def update_initial_recommendations(email: str, access_token: str):
-    try:
-        user_data = users_collection.find_one({"email": email})
-        if not user_data:
-            raise HTTPException(status_code=404, detail="User not found")
-        user = User(**user_data)
-        if not user.genres:
-            raise HTTPException(status_code=400, detail="No genres found for user")
-        spotify = SpotifyAPI(access_token)  
-        recommendations = spotify.get_recommended_track_ids(
-            genres=user.genres,
-            artist_popularity_threshold=MAX_POPULARITY
-        )
-        users_collection.update_one(
-            {"email": email},
-            {"$set": {"recommended_songs": recommendations}}
-        )
-        return {
-            "message": "Initial recommendations updated successfully",
-            "recommendations": recommendations,
-            "count": len(recommendations)
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.post("/song/initial/{email}")
+def update_initial_recommendations(email: str):
+    return {"message": "Initial recommendations updated successfully"}
 
 # Spotify Account Interactions
 @router.post("/spotify/liked/{email}")

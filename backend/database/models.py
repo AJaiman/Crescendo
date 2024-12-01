@@ -6,3 +6,4 @@ class User(BaseModel):
     last_name: str
     liked_songs: list[str]
     genres: list[str]
+    recommendations: list[str]
