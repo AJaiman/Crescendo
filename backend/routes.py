@@ -1,9 +1,9 @@
-from backend.database.models import User
+from spotify import SpotifyAPI
+from database.models import User
 from main import router
 from config import users_collection
-from backend.spotify import SpotifyAPI
+from constants import *
 from fastapi import HTTPException
-from constants import REC_LIMIT, MAX_POPULARITY
 # User Routes
 @router.post("/user")
 def create_user(user: User):
@@ -17,6 +17,7 @@ def create_user(user: User):
         "first_name": user.first_name,
         "last_name": user.last_name,
         "liked_songs": user.liked_songs,
+        "disliked_songs": user.disliked_songs,
         "genres": user.genres,
         "recommendations": user.recommendations
     })
@@ -32,6 +33,7 @@ def get_all_users():
             "first_name": user["first_name"],
             "last_name": user["last_name"], 
             "liked_songs": user["liked_songs"],
+            "disliked_songs": user["disliked_songs"],
             "genres": user["genres"],
             "recommendations": user["recommendations"]
         })
@@ -49,6 +51,7 @@ def get_user(email: str):
         "first_name": user["first_name"], 
         "last_name": user["last_name"],
         "liked_songs": user["liked_songs"],
+        "disliked_songs": user["disliked_songs"],
         "genres": user["genres"],
         "recommendations": user["recommendations"]
     }
@@ -62,9 +65,35 @@ def delete_user(email: str):
     return {"message": "User deleted successfully"}
 
 # User Song Interactions
-@router.post("/user/like/{song_id}")
-def like_song(song_id: str):
+@router.post("/user/like/{song_id}/{email}")
+def like_song(song_id: str, email: str):
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return {"message": "User not found"}
+    
+    # Add song to liked songs list if not already present
+    if song_id not in user["liked_songs"]:
+        users_collection.update_one(
+            {"email": email},
+            {"$push": {"liked_songs": song_id}}
+        )
+    
     return {"message": "Song liked successfully"}
+
+@router.post("/user/dislike/{song_id}/{email}")
+def dislike_song(song_id: str, email: str):
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return {"message": "User not found"}
+    
+    # Add song to disliked songs list if not already present
+    if song_id not in user["disliked_songs"]:
+        users_collection.update_one(
+            {"email": email},
+            {"$push": {"disliked_songs": song_id}}
+        )
+    
+    return {"message": "Song disliked successfully"}
 
 
 # Song Routes
@@ -72,35 +101,54 @@ def like_song(song_id: str):
 def get_song_info(song_id: str):
     return {"message": "Song retrieved successfully"}
 
-@router.post("/song/recommendations/{email}")
+def update_song_recommendations(email: str, access_token: str):
+    try:
+        spotify = SpotifyAPI(access_token)
+        user = users_collection.find_one({"email": email})
+        if not user:
+            return {"message": "User not found"}
+
+        liked_songs = user["liked_songs"]
+        disliked_songs = user["disliked_songs"]
+        artist_popularity_threshold = MAX_POPULARITY
+
+        recommended_tracks = spotify.get_recommended_track_ids(
+            liked_songs,
+            disliked_songs,
+            artist_popularity_threshold
+        )
+
+        # Update user's recommendations in database
+        users_collection.update_one(
+            {"email": email},
+            {"$set": {"recommendations": recommended_tracks}}
+        )
+
+        return {
+            "message": "Song recommendations updated successfully",
+            "recommendations": recommended_tracks
+        }
+    except Exception as e:
+        return {"error": str(e)}, 400
+
+@router.post("/song/initial/{email}") # Use genres to generate recommendations and update user's recommendations list
 async def update_initial_recommendations(email: str, access_token: str):
     try:
-        # Get user from MongoDB
         user_data = users_collection.find_one({"email": email})
         if not user_data:
-            raise HTTPException(status_code=404, detail="User not found")
-        
+            raise HTTPException(status_code=404, detail="User not found")     
         user = User(**user_data)
-        
         if not user.genres:
             raise HTTPException(status_code=400, detail="No genres found for user")
-        
-        # Initialize Spotify API with access token
-        # Note: You'll need to implement token management
         spotify = SpotifyAPI(access_token)  
-        
-        # Get recommendations based on genres
         recommendations = spotify.get_recommended_track_ids(
             genres=user.genres,
             artist_popularity_threshold=MAX_POPULARITY
         )
-        
-        # Update user's recommendations in database
         users_collection.update_one(
             {"email": email},
             {"$set": {"recommended_songs": recommendations}}
-        )
-        
+        )   
         return {
             "message": "Initial recommendations updated successfully",
             "recommendations": recommendations,
@@ -109,10 +157,6 @@ async def update_initial_recommendations(email: str, access_token: str):
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/song/initial/{email}")
-def update_initial_recommendations(email: str):
-    return {"message": "Initial recommendations updated successfully"}
 
 # Spotify Account Interactions
 @router.post("/spotify/liked/{email}")
