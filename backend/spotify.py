@@ -20,5 +20,6 @@ class SpotifyAPI():
         """
         Returns the track information for the given track id
         """
-        return self.sp.track(track_id)
+        return {"track_info":self.sp.track(track_id),
+                "audio_snipppet": self.sp.get_preview_url(track_id)}
 
