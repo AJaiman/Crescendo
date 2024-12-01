@@ -1,4 +1,4 @@
-from backend.spotify import SpotifyAPI
+from spotify import SpotifyAPI
 from database.models import User
 from main import router
 from config import users_collection
