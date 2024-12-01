@@ -1,4 +1,4 @@
-from backend.spotify import SpotifyAPI
+from spotify import SpotifyAPI
 from database.models import User
 from main import router
 from config import users_collection
@@ -65,9 +65,35 @@ def delete_user(email: str):
     return {"message": "User deleted successfully"}
 
 # User Song Interactions
-@router.post("/user/like/{song_id}")
-def like_song(song_id: str):
+@router.post("/user/like/{song_id}/{email}")
+def like_song(song_id: str, email: str):
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return {"message": "User not found"}
+    
+    # Add song to liked songs list if not already present
+    if song_id not in user["liked_songs"]:
+        users_collection.update_one(
+            {"email": email},
+            {"$push": {"liked_songs": song_id}}
+        )
+    
     return {"message": "Song liked successfully"}
+
+@router.post("/user/dislike/{song_id}/{email}")
+def dislike_song(song_id: str, email: str):
+    user = users_collection.find_one({"email": email})
+    if not user:
+        return {"message": "User not found"}
+    
+    # Add song to disliked songs list if not already present
+    if song_id not in user["disliked_songs"]:
+        users_collection.update_one(
+            {"email": email},
+            {"$push": {"disliked_songs": song_id}}
+        )
+    
+    return {"message": "Song disliked successfully"}
 
 
 # Song Routes
