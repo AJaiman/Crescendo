@@ -97,32 +97,33 @@ def dislike_song(song_id: str, email: str):
 
 
 # Song Routes
-@router.get("/song/{song_id}") # Get song info from Spotify API (Bryans function)
-def get_song_info(song_id: str):
-    spotify = SpotifyAPI(access_token)
-    track_info = spotify.get_track_info(song_id)
-    return track_info
-except Exception as e:
-    return {"error": str(e)}, 400 #changed this from the song liked successfuly to the error message :)
+@router.get("/song/{song_id}")
+async def get_song_info(song_id: str, access_token: str):
+    try:
+        spotify = SpotifyAPI(access_token)
+        track_info = spotify.get_track_info(song_id)
+        return track_info
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-def update_song_recommendations(email: str, access_token: str):
+@router.post("/song/recommendations/{email}")
+async def update_recommendations(email: str, access_token: str):
     try:
         spotify = SpotifyAPI(access_token)
         user = users_collection.find_one({"email": email})
         if not user:
-            return {"message": "User not found"}
+            raise HTTPException(status_code=404, detail="User not found")
 
         liked_songs = user["liked_songs"]
         disliked_songs = user["disliked_songs"]
         artist_popularity_threshold = MAX_POPULARITY
 
         recommended_tracks = spotify.get_recommended_track_ids(
-            liked_songs,
-            disliked_songs,
-            artist_popularity_threshold
+            seed_tracks=liked_songs,
+            disliked_tracks=disliked_songs,
+            artist_popularity_threshold=artist_popularity_threshold
         )
 
-        # Update user's recommendations in database
         users_collection.update_one(
             {"email": email},
             {"$set": {"recommendations": recommended_tracks}}
@@ -133,9 +134,9 @@ def update_song_recommendations(email: str, access_token: str):
             "recommendations": recommended_tracks
         }
     except Exception as e:
-        return {"error": str(e)}, 400
+        raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/song/initial/{email}") # Use genres to generate recommendations and update user's recommendations list
+@router.post("/song/initial/{email}")
 async def update_initial_recommendations(email: str, access_token: str):
     try:
         user_data = users_collection.find_one({"email": email})
@@ -144,26 +145,39 @@ async def update_initial_recommendations(email: str, access_token: str):
         user = User(**user_data)
         if not user.genres:
             raise HTTPException(status_code=400, detail="No genres found for user")
+        
         spotify = SpotifyAPI(access_token)  
         recommendations = spotify.get_recommended_track_ids(
-            genres=user.genres,
+            seed_genres=user.genres,
             artist_popularity_threshold=MAX_POPULARITY
         )
+        
         users_collection.update_one(
             {"email": email},
-            {"$set": {"recommended_songs": recommendations}}
+            {"$set": {"recommendations": recommendations}}
         )   
+        
         return {
             "message": "Initial recommendations updated successfully",
             "recommendations": recommendations,
             "count": len(recommendations)
         }
-        
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 # Spotify Account Interactions
 @router.post("/spotify/liked/{email}")
-def update_liked_songs(email: str, song_id: str):
-    return {"message": "Liked songs updated successfully"}
+async def update_liked_songs(email: str, access_token: str):
+    try:
+        spotify = SpotifyAPI(access_token)
+        liked_songs = spotify.get_user_liked_songs()
+        
+        users_collection.update_one(
+            {"email": email},
+            {"$set": {"liked_songs": liked_songs}}
+        )
+        
+        return {"message": "Liked songs updated successfully", "songs": liked_songs}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
  
