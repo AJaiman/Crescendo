@@ -4,6 +4,6 @@ app = FastAPI()
 router = APIRouter()
 
 # Import routes after router is created
-from routes import *  # This should be at the bottom
+from routes import *
 
 app.include_router(router)
