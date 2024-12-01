@@ -22,15 +22,33 @@ def like_song(song_id: str):
 
 
 # Song Routes
-@router.get("/song/{song_id}")
+@router.get("/song/{song_id}") # Get song info from Spotify API (Bryans function)
 def get_song_info(song_id: str):
     return {"message": "Song retrieved successfully"}
 
-@router.post("/song/recommendations/{email}")
+@router.post("/song/recommendations/{email}") # Use liked songs to generate recommendations and update user's recommendations list
 def update_song_recommendations(email: str):
-    return {"message": "Song recommendations retrieved successfully"}
+    user = User.get_by_email(email)
+    liked_songs = user.liked_songs
+    disliked_songs = user.disliked_songs
+    artist_popularity_threshold = 20 #max popularity threshold
 
-@router.post("/song/initial/{email}")
+    recommended_tracks = get_recommended_tracks(
+        liked_songs,
+        disliked_songs,
+        artist_popularity_threshold
+    )
+    user.update_recommendations(recommended_tracks)
+
+    return {
+        "message": "Song recommendations retrieved successfully"
+        "recommendations": recommended_tracks
+    }
+except Exception as e:
+    return {"error": str(e)}, 400 #basiclaly will reutrn the error mesaage as 400 status
+
+
+@router.post("/song/initial/{email}") # Use genres to generate recommendations and update user's recommendations list
 def update_initial_recommendations(email: str):
     return {"message": "Initial recommendations updated successfully"}
 
