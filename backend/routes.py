@@ -72,13 +72,14 @@ def get_song_info(song_id: str):
     return {"message": "Song retrieved successfully"}
 
 @router.post("/song/recommendations/{email}") # Use liked songs to generate recommendations and update user's recommendations list
-def update_song_recommendations(email: str):
+def update_song_recommendations(email: str, access_token: str):
+    spotify = SpotifyAPI(access_token)
     user = User.get_by_email(email)
     liked_songs = user.liked_songs
     disliked_songs = user.disliked_songs
-    artist_popularity_threshold = 20 #max popularity threshold
+    artist_popularity_threshold = MAX_POPULARITY_THRESHOLD #max popularity threshold
 
-    recommended_tracks = get_recommended_tracks(
+    recommended_tracks = spotify.get_recommended_track_ids(
         liked_songs,
         disliked_songs,
         artist_popularity_threshold
