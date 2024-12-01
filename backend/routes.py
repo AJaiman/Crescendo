@@ -1,6 +1,8 @@
+from backend.spotify import SpotifyAPI
 from database.models import User
 from main import router
 from config import users_collection
+from constants import *
 
 # User Routes
 @router.post("/user")
@@ -71,27 +73,35 @@ def like_song(song_id: str):
 def get_song_info(song_id: str):
     return {"message": "Song retrieved successfully"}
 
-@router.post("/song/recommendations/{email}") # Use liked songs to generate recommendations and update user's recommendations list
+@router.post("/song/recommendations/{email}")
 def update_song_recommendations(email: str, access_token: str):
-    spotify = SpotifyAPI(access_token)
-    user = User.get_by_email(email)
-    liked_songs = user.liked_songs
-    disliked_songs = user.disliked_songs
-    artist_popularity_threshold = MAX_POPULARITY_THRESHOLD #max popularity threshold
+    try:
+        spotify = SpotifyAPI(access_token)
+        user = users_collection.find_one({"email": email})
+        if not user:
+            return {"message": "User not found"}
 
-    recommended_tracks = spotify.get_recommended_track_ids(
-        liked_songs,
-        disliked_songs,
-        artist_popularity_threshold
-    )
-    user.update_recommendations(recommended_tracks)
+        liked_songs = user["liked_songs"]
+        artist_popularity_threshold = MAX_POPULARITY
 
-    return {
-        "message": "Song recommendations retrieved successfully"
-        "recommendations": recommended_tracks
-    }
-except Exception as e:
-    return {"error": str(e)}, 400 #basiclaly will reutrn the error mesaage as 400 status
+        recommended_tracks = spotify.get_recommended_track_ids(
+            liked_songs,
+            [],  # No disliked songs in current User model
+            artist_popularity_threshold
+        )
+
+        # Update user's recommendations in database
+        users_collection.update_one(
+            {"email": email},
+            {"$set": {"recommendations": recommended_tracks}}
+        )
+
+        return {
+            "message": "Song recommendations updated successfully",
+            "recommendations": recommended_tracks
+        }
+    except Exception as e:
+        return {"error": str(e)}, 400
 
 
 @router.post("/song/initial/{email}") # Use genres to generate recommendations and update user's recommendations list
