@@ -1,2 +1,2 @@
 # Pathfinder
-College Application Companion
+Song Recommendation App
