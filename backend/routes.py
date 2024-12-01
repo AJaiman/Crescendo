@@ -73,7 +73,11 @@ def like_song(song_id: str):
 # Song Routes
 @router.get("/song/{song_id}") # Get song info from Spotify API (Bryans function)
 def get_song_info(song_id: str):
-    return {"message": "Song retrieved successfully"}
+    spotify = SpotifyAPI(access_token)
+    track_info = spotify.get_track_info(song_id)
+    return track_info
+except Exception as e:
+    return {"error": str(e)}, 400 #changed this from the song liked successfuly to the error message :)
 
 @router.post("/song/recommendations/{email}")
 def update_song_recommendations(email: str, access_token: str):
