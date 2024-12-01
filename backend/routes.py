@@ -67,7 +67,6 @@ def like_song(song_id: str):
     return {"message": "Song liked successfully"}
 
 
-
 # Song Routes
 @router.get("/song/{song_id}") # Get song info from Spotify API (Bryans function)
 def get_song_info(song_id: str):
