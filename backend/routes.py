@@ -17,6 +17,7 @@ def create_user(user: User):
         "first_name": user.first_name,
         "last_name": user.last_name,
         "liked_songs": user.liked_songs,
+        "disliked_songs": user.disliked_songs,
         "genres": user.genres,
         "recommendations": user.recommendations
     })
@@ -32,6 +33,7 @@ def get_all_users():
             "first_name": user["first_name"],
             "last_name": user["last_name"], 
             "liked_songs": user["liked_songs"],
+            "disliked_songs": user["disliked_songs"],
             "genres": user["genres"],
             "recommendations": user["recommendations"]
         })
@@ -49,6 +51,7 @@ def get_user(email: str):
         "first_name": user["first_name"], 
         "last_name": user["last_name"],
         "liked_songs": user["liked_songs"],
+        "disliked_songs": user["disliked_songs"],
         "genres": user["genres"],
         "recommendations": user["recommendations"]
     }
@@ -81,11 +84,12 @@ def update_song_recommendations(email: str, access_token: str):
             return {"message": "User not found"}
 
         liked_songs = user["liked_songs"]
+        disliked_songs = user["disliked_songs"]
         artist_popularity_threshold = MAX_POPULARITY
 
         recommended_tracks = spotify.get_recommended_track_ids(
             liked_songs,
-            [],  # No disliked songs in current User model
+            disliked_songs,
             artist_popularity_threshold
         )
 
