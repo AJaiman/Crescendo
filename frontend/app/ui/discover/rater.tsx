@@ -1,20 +1,25 @@
 "use client";
 
+import { TrackInfo } from '@/types';
 import { HandThumbDownIcon, HeartIcon, PauseIcon, PlayIcon } from '@heroicons/react/24/solid'
 import Image from 'next/image'
 import { useState } from 'react';
 
-export default function Rater() {
+type RaterProps = {
+    track_info: TrackInfo;
+}
+
+export default function Rater(props: RaterProps) {
     const [isPlaying, setPlaying] = useState(true);
 
     return (
         <div className="flex flex-row items-between justify-center gap-12 h-1/3 z-10">
-            <Image width={320} height={320} src="/flower-boy.png" alt="Image of album cover" className="rounded-lg" />
+            <Image width={320} height={320} src={props.track_info.album.images[0]} alt="Image of album cover" className="rounded-lg" />
             <div className="flex flex-col items-start justify-between w-3/5 h-full">
                 <div className="space-y-8">
                     <div>
-                        <h1 className="font-extrabold text-5xl whitespace-nowrap text-crescendoPurple">See You Again</h1>
-                        <h1 className="font-medium text-xl whitespace-nowrap text-crescendoPurple">Tyler, the Creator and Kali Uchis</h1>
+                        <h1 className="font-extrabold text-5xl whitespace-nowrap text-crescendoPurple">{props.track_info.name}</h1>
+                        <h1 className="font-medium text-xl whitespace-nowrap text-crescendoPurple">Test</h1>
                     </div>
                     <div className="flex flex-row items-center justify-between w-[20rem] h-12">
                         <button onClick={() => setPlaying(!isPlaying)}>
