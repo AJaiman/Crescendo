@@ -1,8 +1,19 @@
+"use client"
+
 import Grid from "@/app/ui/landing/grid";
 import { figtree, rethinkSans } from "@/app/ui/fonts";
 import SignInButton from "@/app/ui/landing/sign-in-button";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 export default function Home() {
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  if (session != null) {
+    router.push("/discover");
+  }
+
   return (
     <div className="relative flex flex-col items-center justify-center w-screen h-screen">
       <div className="absolute inset-0 w-screen h-screen grid grid-rows-2 grid-cols-3">
