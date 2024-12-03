@@ -17,7 +17,6 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
 }
 
 @layer utilities {
@@ -29,8 +28,8 @@ body {
   }
 
   .ellipse-radial-gradient {
-    -webkit-mask-image: radial-gradient(ellipse at center, rgba(96, 88, 204, 1) 0%, rgba(96, 88, 204, 0.25) 60%, rgba(96, 88, 204, 0) 80%);
-    mask-image: radial-gradient(ellipse at center, rgba(96, 88, 204, 1) 0%, rgba(96, 88, 204, 0.25) 60%, rgba(96, 88, 204, 0) 80%);
+    -webkit-mask-image: radial-gradient(ellipse at center, rgba(96, 88, 204, 1) 0%, rgba(96, 88, 204, 0.15) 60%, rgba(96, 88, 204, 0) 80%);
+    mask-image: radial-gradient(ellipse at center, rgba(96, 88, 204, 1) 0%, rgba(96, 88, 204, 0.15) 60%, rgba(96, 88, 204, 0) 80%);
     -webkit-mask-repeat: no-repeat;
     mask-repeat: no-repeat;
   }
